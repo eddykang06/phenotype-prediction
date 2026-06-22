@@ -9,6 +9,69 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import r2_score
 from sklearn.cross_decomposition import PLSRegression
 from sklearn.model_selection import GridSearchCV
+from src.split import random_combination_splits
+
+
+def run_nested_pls_cv(
+        df, 
+        splits, 
+        synergy
+):
+    """
+    Running nested CV for PLS regression
+    """
+
+    scores = []
+
+    if synergy:
+        target = "synergy_score"
+    else:
+        target = "CFU"
+
+    for train_idx, test_idx in splits:
+        train_df = df.iloc[train_idx]
+        X_train = train_df.iloc[:, train_df.columns.str.contains("SP")]
+        y_train = train_df[target]
+
+        test_df = df.iloc[test_idx]
+        X_test = test_df.iloc[:, test_df.columns.str.contains("SP")]
+        y_test = test_df[target]
+
+        # Create a nested hyperparameter tuning scheme
+        param_grid = {
+            "model__n_components": list(range(3, 20))
+        }
+        
+        # Make pipeline for PLS regression
+        pipeline = Pipeline([
+                ("scaler", StandardScaler()),
+                ("model", PLSRegression())
+        ])
+
+        # Setup GridSearch
+        search = GridSearchCV(
+            estimator = pipeline,
+            cv = 5,
+            param_grid = param_grid,
+            scoring = "neg_mean_squared_error",
+        )
+
+        # Fit with best params
+        search.fit(X_train, y_train)
+        preds = search.predict(X_test)
+
+        # Evaluate
+        score = r2_score(y_test, preds)
+        scores.append(score)
+    
+    mean_score = np.mean(scores)
+
+    # Round
+    scores = [round(score, 3) for score in scores]
+    mean_score = round(mean_score, 3)
+
+    return scores, mean_score
+
 
 def train_with_custom_mask(
         df: pd.DataFrame, 
@@ -121,61 +184,6 @@ def train_with_custom_mask(
     best_model = search.best_estimator_
 
     return best_model
-
-
-def random_combination_splits(
-        data_df,
-        n_combo_datapoints,
-        n_splits,
-        seed = None
-): 
-    """
-    Generate a specified number of train-test splits with a specified number of combination datapoints in the training set
-
-    Args:
-        data_df            : Dataframe with integers on index and attached metadata
-        n_combo_datapoints : Number of combination datapoints to include in training set
-        n_splits           : Number of different train-test splits to generate
-        seed               : Random seed for numpy
-
-    Returns:
-        splits : List of tuples of train idx and test idx
-    """
-    # Reset index
-    df = data_df.copy().reset_index()
-    splits = []
-    rng = np.random.default_rng(seed)
-
-    # Get combination idx and single-drug idx
-    combo_idx = df.index[df["num_drugs"] == 2].to_numpy()
-    single_idx = df.index[df["num_drugs"] == 1].to_numpy()
-
-    # Store combo dataframe for reference
-    combo_df = df.iloc[combo_idx]
-    n_combos = len(combo_df["drug_id"].unique())
-
-    for i in range(n_splits):
-        
-        # For each drug pair, get n random combination datapoints
-        random_idx = []
-
-        for drug in combo_df["drug_id"].unique():
-
-            # Subset to drug
-            drug_index = combo_df.index[combo_df["drug_id"] == drug].to_numpy()
-            drug_random_idx = rng.choice(drug_index, size = n_combo_datapoints // n_combos, replace = False)
-            random_idx.append(drug_random_idx)
-
-        # Array and flatten
-        random_idx = np.ndarray.flatten(np.array(random_idx))
-
-        # Train and test idx
-        train_idx= np.concatenate((single_idx, random_idx))
-        test_idx = np.array(list(set(df.index.to_numpy()) - set(train_idx)))
-        idx_tuple = (train_idx, test_idx)
-        splits.append(idx_tuple)
-
-    return splits
 
 
 def plot_r2_over_data_increase(

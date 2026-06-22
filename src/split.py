@@ -87,3 +87,58 @@ def timepoint_held_out_split(df):
         splits.append(idx_tuple)
     
     return splits
+
+
+def random_combination_splits(
+        data_df,
+        n_combo_datapoints,
+        n_splits,
+        seed = None
+): 
+    """
+    Generate a specified number of train-test splits with a specified number of combination datapoints in the training set
+
+    Args:
+        data_df            : Dataframe with integers on index and attached metadata
+        n_combo_datapoints : Number of combination datapoints to include in training set
+        n_splits           : Number of different train-test splits to generate
+        seed               : Random seed for numpy
+
+    Returns:
+        splits : List of tuples of train idx and test idx
+    """
+    # Reset index
+    df = data_df.copy().reset_index()
+    splits = []
+    rng = np.random.default_rng(seed)
+
+    # Get combination idx and single-drug idx
+    combo_idx = df.index[df["num_drugs"] == 2].to_numpy()
+    single_idx = df.index[df["num_drugs"] == 1].to_numpy()
+
+    # Store combo dataframe for reference
+    combo_df = df.iloc[combo_idx]
+    n_combos = len(combo_df["drug_id"].unique())
+
+    for i in range(n_splits):
+        
+        # For each drug pair, get n random combination datapoints
+        random_idx = []
+
+        for drug in combo_df["drug_id"].unique():
+
+            # Subset to drug
+            drug_index = combo_df.index[combo_df["drug_id"] == drug].to_numpy()
+            drug_random_idx = rng.choice(drug_index, size = n_combo_datapoints // n_combos, replace = False)
+            random_idx.append(drug_random_idx)
+
+        # Array and flatten
+        random_idx = np.ndarray.flatten(np.array(random_idx))
+
+        # Train and test idx
+        train_idx= np.concatenate((single_idx, random_idx))
+        test_idx = np.array(list(set(df.index.to_numpy()) - set(train_idx)))
+        idx_tuple = (train_idx, test_idx)
+        splits.append(idx_tuple)
+
+    return splits
