@@ -1,10 +1,281 @@
-# Functions for training data 
-def log_transform_features():
+"""Training regression models"""
 
-    return
+import numpy as np
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import r2_score
+from sklearn.cross_decomposition import PLSRegression
+from sklearn.model_selection import GridSearchCV
 
-def log_transform_output():
+def train_with_custom_mask(
+        df: pd.DataFrame, 
+        train_mask: np.array, 
+        test_mask: np.array, 
+        title: str
+):  
+    """
+    Training model with custom train and test mask, then plotting predictions
 
-    return
+    Args:
+        df : 
+        train_mask :
+        test_mask :
+        title :
+    
+    Returns:
+    """
 
-# Look into sklearn pipeline to automate*
+    df_new = df.copy()
+    df_new = df_new.rename(columns = {
+        "drug1_dose": "Drug 1 dose (x MIC)",
+        "drug2_dose": "Drug 2 dose (x MIC)",
+        "drug_id": "Drug ID"
+    })
+    
+    train_df = df_new[train_mask]
+    test_df = df_new[test_mask]
+
+    # Train-test split
+    X_train = train_df.iloc[:, train_df.columns.str.contains("SP")]
+    y_train = train_df["CFU"]
+
+    X_test = test_df.iloc[:, test_df.columns.str.contains("SP")]
+    y_test = test_df["CFU"]
+    meta = test_df.iloc[:, ~test_df.columns.str.contains("SP|CFU")]
+
+    # PLS regression CV pipeline
+    param_grid = {
+        "model__n_components": list(range(3, 20))
+    }
+
+    # Make pipeline for PLS regression
+    pipeline = Pipeline([
+            ("scaler", StandardScaler()),
+            ("model", PLSRegression())
+    ])
+
+    # Grid search
+    search = GridSearchCV(
+        estimator = pipeline,
+        cv = 5,
+        param_grid = param_grid,
+        scoring = "neg_mean_squared_error",
+    )
+
+    # Fit with best params
+    search.fit(X_train, y_train)
+    y_pred = search.predict(X_test)
+
+    # Evaluate
+    score = r2_score(y_test, y_pred)
+
+    # Store results with metadata
+    results = meta.copy()
+    results["true"] = y_test.to_frame()
+    results["pred"] = y_pred
+
+    # Plot
+    fig, axes = plt.subplots(1, 3, figsize = (20, 5))
+
+    sns.scatterplot(
+        results,
+        x = "true",
+        y = "pred",
+        hue = "Drug ID",
+        ax = axes[0]
+    )
+
+    sns.scatterplot(
+        results,
+        x = "true",
+        y = "pred",
+        hue = "Drug 1 dose (x MIC)",
+        style = "Drug ID",
+        ax = axes[1]
+    )
+
+    sns.scatterplot(
+        results,
+        x = "true",
+        y = "pred",
+        hue = "Drug 2 dose (x MIC)",
+        style = "Drug ID",
+        ax = axes[2]
+    )
+
+    # Set axis limits and R^2 annotation
+    for ax in axes:
+        ax.set_xlim(5, 10)
+        ax.set_ylim(5, 10)
+        ax.text(5.5, 9.5, f"$R^2$ = {round(score, 3)}")
+        ax.set_xlabel("True log10 CFU")
+        ax.set_ylabel("Predicted log10 CFU")
+        ax.legend(loc = "lower right")
+    
+    fig.suptitle(title)
+
+    # Extract and return best model 
+    best_model = search.best_estimator_
+
+    return best_model
+
+
+def random_combination_splits(
+        data_df,
+        n_combo_datapoints,
+        n_splits,
+        seed = None
+): 
+    """
+    Generate a specified number of train-test splits with a specified number of combination datapoints in the training set
+
+    Args:
+        data_df            : Dataframe with integers on index and attached metadata
+        n_combo_datapoints : Number of combination datapoints to include in training set
+        n_splits           : Number of different train-test splits to generate
+        seed               : Random seed for numpy
+
+    Returns:
+        splits : List of tuples of train idx and test idx
+    """
+    # Reset index
+    df = data_df.copy().reset_index()
+    splits = []
+    rng = np.random.default_rng(seed)
+
+    # Get combination idx and single-drug idx
+    combo_idx = df.index[df["num_drugs"] == 2].to_numpy()
+    single_idx = df.index[df["num_drugs"] == 1].to_numpy()
+
+    # Store combo dataframe for reference
+    combo_df = df.iloc[combo_idx]
+    n_combos = len(combo_df["drug_id"].unique())
+
+    for i in range(n_splits):
+        
+        # For each drug pair, get n random combination datapoints
+        random_idx = []
+
+        for drug in combo_df["drug_id"].unique():
+
+            # Subset to drug
+            drug_index = combo_df.index[combo_df["drug_id"] == drug].to_numpy()
+            drug_random_idx = rng.choice(drug_index, size = n_combo_datapoints // n_combos, replace = False)
+            random_idx.append(drug_random_idx)
+
+        # Array and flatten
+        random_idx = np.ndarray.flatten(np.array(random_idx))
+
+        # Train and test idx
+        train_idx= np.concatenate((single_idx, random_idx))
+        test_idx = np.array(list(set(df.index.to_numpy()) - set(train_idx)))
+        idx_tuple = (train_idx, test_idx)
+        splits.append(idx_tuple)
+
+    return splits
+
+
+def plot_r2_over_data_increase(
+        df,
+        step_size,
+        n_splits,
+        seed = None
+):
+    """
+    Plot R^2 performance over time as more combination data is incrementaly added to the training set.
+
+    Args:
+        df        : Dataframe with attached metadata
+        step_size : Number of combination datapoints to add from each drug pair at each increment
+        n_splits  : Number of train-test splits to generate per increment
+        seed      : Random seed for numpy
+
+    Returns:
+        Plot where x = # combination datapoints in training, y = R^2
+    """
+    # Filter out metadata
+    X = df.iloc[:, df.columns.str.contains("SP")]
+    y = df["CFU"]
+
+    # Number of combination datapoints
+    n_combo_data = (df["num_drugs"] == 2).sum()
+    scores = []
+
+    # Loop through # of 
+    for i in range(0, n_combo_data, step_size):
+
+        # Get train-test splits
+        splits = random_combination_splits(
+            data_df = df,
+            n_combo_datapoints = i,
+            n_splits = n_splits,
+            seed = seed
+        )
+        split_scores = []
+
+        # Train and evaluate a model for each split
+        for train_idx, test_idx in splits:
+
+            # Train-test split
+            X_train, X_test = X.iloc[train_idx], X.iloc[test_idx]
+            y_train, y_test = y.iloc[train_idx], y.iloc[test_idx]
+
+            # PLS regression CV pipeline
+            param_grid = {
+                "model__n_components": list(range(3, 15))
+            }
+
+            # Make pipeline for PLS regression
+            pipeline = Pipeline([
+                    ("scaler", StandardScaler()),
+                    ("model", PLSRegression())
+            ])
+
+            # Grid search
+            search = GridSearchCV(
+                estimator = pipeline,
+                cv = 5,
+                param_grid = param_grid,
+                scoring = "neg_mean_squared_error",
+            )
+
+            # Fit with best params
+            search.fit(X_train, y_train)
+            y_pred = search.predict(X_test)
+
+            # Evaluate
+            score = r2_score(y_test, y_pred)
+            split_scores.append(score)
+
+        # Add to overall score tracker
+        scores.append(split_scores)
+    
+    scores = np.array(scores)
+
+    # Convert to dataframe
+    results = pd.DataFrame(scores) 
+    results["n_combo"] = list(range(0, n_combo_data, step_size))
+    results = results.melt(id_vars = ["n_combo"], value_name = "R^2").drop(columns = ["variable"])
+
+    # Plot
+    ax = sns.stripplot(results, x = "n_combo", y = "R^2")
+    sns.pointplot(
+        results, 
+        x = "n_combo", 
+        y = "$R^2$", 
+        ax = ax, 
+        errorbar = "sd", 
+        color = "red",     
+        linewidth = 1,
+        markersize = 4,
+        err_kws = {"linewidth": 1})
+
+    # Customize
+    ax.set_title("$R^2$ as more combination data is added to the training set")
+    ax.set_xlabel("Number of combination datapoints added to training set")
+    ax.set_ylabel("R^2")
+
+    plt.show()
