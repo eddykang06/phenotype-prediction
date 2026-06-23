@@ -9,6 +9,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import r2_score
 from sklearn.cross_decomposition import PLSRegression
 from sklearn.model_selection import GridSearchCV
+from sklearn.linear_model import ElasticNetCV
 from src.split import random_combination_splits
 
 
@@ -73,11 +74,55 @@ def run_nested_pls_cv(
     return scores, mean_score
 
 
+def run_nested_elasticnet_cv(df, splits, synergy):
+    
+    if synergy:
+        target = "synergy_score"
+    else:
+        target = "CFU"
+
+    scores = []
+
+    for train_idx, test_idx in splits:
+
+        # Separate train and test data
+        train_df = df.iloc[train_idx]
+        X_train = train_df.iloc[:, train_df.columns.str.contains("SP")]
+        y_train = train_df[target]
+
+        test_df = df.iloc[test_idx]
+        X_test = test_df.iloc[:, test_df.columns.str.contains("SP")]
+        y_test = test_df[target]
+
+        # Pipeline for ElasticNet
+        pipeline = Pipeline([
+            ("scaler", StandardScaler()),
+            ("model", ElasticNetCV(cv = 5))
+        ])
+
+        # Fit and predict
+        pipeline.fit(X_train, y_train)
+        preds = pipeline.predict(X_test)
+
+        # Evaluate
+        score = r2_score(y_test, preds)
+        scores.append(score)
+    
+    mean_score = np.mean(scores)
+
+    # Round
+    scores = [round(score, 3) for score in scores]
+    mean_score = round(mean_score, 3)
+
+    return scores, mean_score
+
+
 def train_with_custom_mask(
         df: pd.DataFrame, 
         train_mask: np.array, 
         test_mask: np.array, 
-        title: str
+        title: str,
+        synergy = False
 ):  
     """
     Training model with custom train and test mask, then plotting predictions
@@ -98,16 +143,23 @@ def train_with_custom_mask(
         "drug_id": "Drug ID"
     })
     
+    if synergy:
+        target = "synegy_score"
+        varname = "EOB score"
+    else:
+        target = "CFU"
+        varname = "Log 10 CFU"
+
     train_df = df_new[train_mask]
     test_df = df_new[test_mask]
 
     # Train-test split
     X_train = train_df.iloc[:, train_df.columns.str.contains("SP")]
-    y_train = train_df["CFU"]
+    y_train = train_df[target]
 
     X_test = test_df.iloc[:, test_df.columns.str.contains("SP")]
-    y_test = test_df["CFU"]
-    meta = test_df.iloc[:, ~test_df.columns.str.contains("SP|CFU")]
+    y_test = test_df[target]
+    meta = test_df.iloc[:, ~test_df.columns.str.contains("SP" + "|" + target)]
 
     # PLS regression CV pipeline
     param_grid = {
@@ -174,8 +226,8 @@ def train_with_custom_mask(
         ax.set_xlim(5, 10)
         ax.set_ylim(5, 10)
         ax.text(5.5, 9.5, f"$R^2$ = {round(score, 3)}")
-        ax.set_xlabel("True log10 CFU")
-        ax.set_ylabel("Predicted log10 CFU")
+        ax.set_xlabel(f"True {varname}")
+        ax.set_ylabel(f"Predicted {varname}")
         ax.legend(loc = "lower right")
     
     fig.suptitle(title)
