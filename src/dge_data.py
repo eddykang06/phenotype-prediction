@@ -30,6 +30,7 @@ def clean_csv_name(name):
 
     return cleaned
 
+
 def read_l2fc_as_df(data_dir, time_matched):
     """
     Function to extract all l2fc values from a directory of DGE results for various conditions.
@@ -76,6 +77,7 @@ def read_l2fc_as_df(data_dir, time_matched):
                                   for i in range(len(filenames))]
 
     return l2fc_df_list, ids
+
 
 def bind_l2fc_data(l2fc_df_list, ids):
     """

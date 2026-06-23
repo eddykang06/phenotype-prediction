@@ -117,15 +117,14 @@ def run_nested_elasticnet_cv(df, splits, synergy):
     return scores, mean_score
 
 
-def train_with_custom_mask(
+def train_custom_cfu_model(
         df: pd.DataFrame, 
         train_mask: np.array, 
         test_mask: np.array, 
         title: str,
-        synergy = False
 ):  
     """
-    Training model with custom train and test mask, then plotting predictions
+    Training CFU model with custom train and test mask, then plotting predictions
 
     Args:
         df : 
@@ -142,24 +141,17 @@ def train_with_custom_mask(
         "drug2_dose": "Drug 2 dose (x MIC)",
         "drug_id": "Drug ID"
     })
-    
-    if synergy:
-        target = "synegy_score"
-        varname = "EOB score"
-    else:
-        target = "CFU"
-        varname = "Log 10 CFU"
 
     train_df = df_new[train_mask]
     test_df = df_new[test_mask]
 
     # Train-test split
     X_train = train_df.iloc[:, train_df.columns.str.contains("SP")]
-    y_train = train_df[target]
+    y_train = train_df["CFU"]
 
     X_test = test_df.iloc[:, test_df.columns.str.contains("SP")]
-    y_test = test_df[target]
-    meta = test_df.iloc[:, ~test_df.columns.str.contains("SP" + "|" + target)]
+    y_test = test_df["CFU"]
+    meta = test_df.iloc[:, ~test_df.columns.str.contains("SP|CFU")]
 
     # PLS regression CV pipeline
     param_grid = {
@@ -226,8 +218,118 @@ def train_with_custom_mask(
         ax.set_xlim(5, 10)
         ax.set_ylim(5, 10)
         ax.text(5.5, 9.5, f"$R^2$ = {round(score, 3)}")
-        ax.set_xlabel(f"True {varname}")
-        ax.set_ylabel(f"Predicted {varname}")
+        ax.set_xlabel(f"True log10 CFU")
+        ax.set_ylabel(f"Predicted log10 CFU")
+        ax.legend(loc = "lower right")
+    
+    fig.suptitle(title)
+
+    # Extract and return best model 
+    best_model = search.best_estimator_
+
+    return best_model
+
+
+def train_custom_synergy_model(
+        df: pd.DataFrame, 
+        train_mask: np.array, 
+        test_mask: np.array, 
+        title: str,
+):  
+    """
+    Training synergy model with custom train and test mask, then plotting predictions
+
+    Args:
+        df : 
+        train_mask :
+        test_mask :
+        title :
+    
+    Returns:
+    """
+
+    df_new = df.copy()
+    df_new = df_new.rename(columns = {
+        "drug1_dose": "Drug 1 dose (x MIC)",
+        "drug2_dose": "Drug 2 dose (x MIC)",
+        "drug_id": "Drug ID"
+    }) 
+
+    train_df = df_new[train_mask]
+    test_df = df_new[test_mask]
+
+    # Train-test split
+    X_train = train_df.iloc[:, train_df.columns.str.contains("SP")]
+    y_train = train_df["synergy_score"]
+
+    X_test = test_df.iloc[:, test_df.columns.str.contains("SP")]
+    y_test = test_df["synergy_score"]
+    meta = test_df.iloc[:, ~test_df.columns.str.contains("SP|synergy_score")]
+
+    # PLS regression CV pipeline
+    param_grid = {
+        "model__n_components": list(range(3, 20))
+    }
+
+    # Make pipeline for PLS regression
+    pipeline = Pipeline([
+            ("scaler", StandardScaler()),
+            ("model", PLSRegression())
+    ])
+
+    # Grid search
+    search = GridSearchCV(
+        estimator = pipeline,
+        cv = 5,
+        param_grid = param_grid,
+        scoring = "neg_mean_squared_error",
+    )
+
+    # Fit with best params
+    search.fit(X_train, y_train)
+    y_pred = search.predict(X_test)
+
+    # Evaluate
+    score = r2_score(y_test, y_pred)
+
+    # Store results with metadata
+    results = meta.copy()
+    results["true"] = y_test.to_frame()
+    results["pred"] = y_pred
+
+    # Plot
+    fig, axes = plt.subplots(1, 2, figsize = (13, 5))
+
+    sns.scatterplot(
+        results,
+        x = "true",
+        y = "pred",
+        hue = "Drug 1 dose (x MIC)",
+        style = "Drug ID",
+        ax = axes[0]
+    )
+
+    sns.scatterplot(
+        results,
+        x = "true",
+        y = "pred",
+        hue = "Drug 2 dose (x MIC)",
+        style = "Drug ID",
+        ax = axes[1]
+    )
+
+    # Get data range and define padding for axes
+    min = np.min([results["true"].min(), results["pred"].min()])
+    max = np.max([results["true"].max(), results["pred"].max()])
+    padding = 0.1 * (max - min)
+
+    # Set axis limits and R^2 annotation
+    for ax in axes:
+        ax.set_xlim(min - padding, max + padding)
+        ax.set_ylim(min - padding, max + padding)
+        ax.text(0.9 * min, 0.9 * max, f"R^2 = {round(score, 3)}")
+        ax.set_xlabel(f"True EOB score")
+        ax.set_ylabel(f"Predicted EOB score")
         ax.legend(loc = "lower right")
     
     fig.suptitle(title)
