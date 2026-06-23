@@ -305,8 +305,12 @@ def train_custom_synergy_model(
         x = "true",
         y = "pred",
         hue = "Drug 1 dose (x MIC)",
-        style = "Drug ID",
         ax = axes[0]
+    )
+
+    axes[0].legend(
+        title = "Drug 1 dose (x MIC)",
+        loc = "lower right"
     )
 
     sns.scatterplot(
@@ -314,23 +318,26 @@ def train_custom_synergy_model(
         x = "true",
         y = "pred",
         hue = "Drug 2 dose (x MIC)",
-        style = "Drug ID",
         ax = axes[1]
     )
 
+    axes[1].legend(
+        title = "Drug 2 dose (x MIC)",
+        loc = "lower right"
+    )
+
     # Get data range and define padding for axes
-    min = np.min([results["true"].min(), results["pred"].min()])
-    max = np.max([results["true"].max(), results["pred"].max()])
-    padding = 0.1 * (max - min)
+    data_min = np.min([results["true"].min(), results["pred"].min()])
+    data_max = np.max([results["true"].max(), results["pred"].max()])
+    padding = 0.1 * (data_max - data_min)
 
     # Set axis limits and R^2 annotation
     for ax in axes:
-        ax.set_xlim(min - padding, max + padding)
-        ax.set_ylim(min - padding, max + padding)
-        ax.text(0.9 * min, 0.9 * max, f"R^2 = {round(score, 3)}")
+        ax.set_xlim(data_min - padding, data_max + padding)
+        ax.set_ylim(data_min - padding, data_max + padding)
+        ax.text(0.9 * data_min, 0.9 * data_max, f"$R^2$ = {round(score, 3)}")
         ax.set_xlabel(f"True EOB score")
         ax.set_ylabel(f"Predicted EOB score")
-        ax.legend(loc = "lower right")
     
     fig.suptitle(title)
 
@@ -438,6 +445,6 @@ def plot_r2_over_data_increase(
     # Customize
     ax.set_title("$R^2$ as more combination data is added to the training set")
     ax.set_xlabel("Number of combination datapoints added to training set")
-    ax.set_ylabel("R^2")
+    ax.set_ylabel("$R^2$")
 
     plt.show()
