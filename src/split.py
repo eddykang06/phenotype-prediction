@@ -136,7 +136,7 @@ def random_combination_splits(
         random_idx = np.ndarray.flatten(np.array(random_idx))
 
         # Train and test idx
-        train_idx= np.concatenate((single_idx, random_idx))
+        train_idx = np.concatenate((single_idx, random_idx))
         test_idx = np.array(list(set(df.index.to_numpy()) - set(train_idx)))
         idx_tuple = (train_idx, test_idx)
         splits.append(idx_tuple)

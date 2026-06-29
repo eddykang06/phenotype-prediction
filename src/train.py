@@ -14,14 +14,13 @@ from src.split import random_combination_splits
 
 
 def run_nested_pls_cv(
-        df, 
-        splits, 
-        synergy
+        df : pd.DataFrame, 
+        splits: list[tuple[list, list]], 
+        synergy: bool
 ):
     """
     Running nested CV for PLS regression
     """
-
     scores = []
 
     if synergy:
@@ -74,7 +73,11 @@ def run_nested_pls_cv(
     return scores, mean_score
 
 
-def run_nested_elasticnet_cv(df, splits, synergy):
+def run_nested_elasticnet_cv(
+    df: pd.DataFrame, 
+    splits: list[tuple[list, list]], 
+    synergy: bool
+):
     
     if synergy:
         target = "synergy_score"
@@ -127,10 +130,10 @@ def train_custom_cfu_model(
     Training CFU model with custom train and test mask, then plotting predictions
 
     Args:
-        df : 
-        train_mask :
-        test_mask :
-        title :
+        df         : Dataframe of TPM values, CFUs, and associated drug metadata
+        train_mask : Binary mask for training data 
+        test_mask  : Binary mask for test data
+        title      : Title for final plot
     
     Returns:
     """
@@ -240,10 +243,10 @@ def train_custom_synergy_model(
     Training synergy model with custom train and test mask, then plotting predictions
 
     Args:
-        df : 
-        train_mask :
-        test_mask :
-        title :
+        df         : Dataframe with interaction scores, synergy scores, and associated metadata
+        train_mask : Binary mask for training data
+        test_mask  : Binary mask for test data
+        title      : Final plot title
     
     Returns:
     """
