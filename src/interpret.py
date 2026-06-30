@@ -62,7 +62,7 @@ def cv_feature_importances(
     feature_df.index = df.columns[df.columns.str.contains("SP")]
 
     # Calculate importances
-    feature_df["coef"] = feature_df.mean(axis = 1) / feature_df.std(axis = 1)
+    feature_df["coef"] = feature_df.mean(axis = 1)
     feature_df = feature_df["coef"].to_frame()
 
     # Sort by abs(coef)
