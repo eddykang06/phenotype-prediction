@@ -4,6 +4,71 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import gseapy as gp
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import r2_score
+from sklearn.cross_decomposition import PLSRegression
+from sklearn.model_selection import GridSearchCV
+
+
+def cv_feature_importances(
+    df: pd.DataFrame,
+    splits: list[tuple[list, list]]
+):
+    """
+    Run nested CV and calculate feature stability across folds (mean/std coefficient across folds)
+
+    Args:
+        df     : Dataframe with 
+        splits : List containing train and test idx for each CV split
+    
+    Returns:
+        feature_df : 1 column dataframe with feature importances ordered by absolute value
+    """
+    # Initialize feature importance dataframe
+    feature_df = []
+
+    # Nested cross-validation to train models
+    for train_idx, _ in splits:
+        train_df = df.iloc[train_idx]
+        X_train = train_df.iloc[:, train_df.columns.str.contains("SP")]
+        y_train = train_df["synergy_score"]
+
+        param_grid = {
+                "model__n_components": list(range(3, 20))
+        }
+
+        pipeline = Pipeline([
+                ("scaler", StandardScaler()),
+                ("model", PLSRegression())
+        ])
+
+        search = GridSearchCV(
+                estimator = pipeline,
+                cv = 5,
+                param_grid = param_grid,
+                scoring = "neg_mean_squared_error",
+        )
+
+        search.fit(X_train, y_train)
+        best_pipeline = search.best_estimator_
+
+        # Add store parameters in feature importances
+        coefs = best_pipeline.named_steps["model"].coef_.ravel()
+        feature_df.append(coefs)
+    
+    # Reshape to dataframe
+    feature_df = pd.DataFrame(feature_df).T
+    feature_df.index = df.columns[df.columns.str.contains("SP")]
+
+    # Calculate importances
+    feature_df["coef"] = feature_df.mean(axis = 1) / feature_df.std(axis = 1)
+    feature_df = feature_df["coef"].to_frame()
+
+    # Sort by abs(coef)
+    feature_df = feature_df.sort_values("coef", key = lambda x: x.abs(), ascending = False)
+
+    return feature_df
 
 
 def plot_top_features(
