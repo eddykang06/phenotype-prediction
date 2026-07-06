@@ -50,13 +50,13 @@ def read_l2fc_as_df(data_dir, time_matched):
     # Time-matched NDC comparisons
     if time_matched:
         for f in all_files:
-            if f.endswith(".csv") and "NDC0hr" in f:
-                files.append(f)\
+            if f.endswith(".csv") and "NDC0hr" not in f:
+                files.append(f)
     
     # Time zero comparisons
     else:
         for f in all_files:
-            if f.endswith(".csv") and "NDC0hr" not in f:
+            if f.endswith(".csv") and "NDC0hr" in f:
                 files.append(f)
 
     if len(files) == 0: 
