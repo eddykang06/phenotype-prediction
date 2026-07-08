@@ -31,7 +31,7 @@ def clean_csv_name(name):
     return cleaned
 
 
-def read_l2fc_as_df(data_dir, time_matched):
+def read_l2fc_as_df(data_dir, time_matched, pval = False):
     """
     Function to extract all l2fc values from a directory of DGE results for various conditions.
     The output will be a list of dataframes, where each DGE result is stored as a dataframe with gene IDs on index, and 1 column of l2fc values
@@ -71,11 +71,19 @@ def read_l2fc_as_df(data_dir, time_matched):
     # Convert csvs to dataframes
     filenames = ["".join([data_dir, "/" , f]) for f in files]
     l2fc_df_list = [pd.read_table(filenames[i], 
-                                  sep = ",", 
-                                  header = 0, 
-                                  index_col = 1)["log2FoldChange"].rename(ids[i]) # Genes
-                                  for i in range(len(filenames))]
+                        sep = ",", 
+                        header = 0, 
+                        index_col = 1)["log2FoldChange"].rename(ids[i]) # Genes
+                        for i in range(len(filenames))]
 
+    if pval:
+        pval_df_list = [pd.read_table(filenames[i], 
+                            sep = ",", 
+                            header = 0, 
+                            index_col = 1)["padj"].rename(ids[i]) # Genes
+                            for i in range(len(filenames))]
+        return l2fc_df_list, pval_df_list, ids
+    
     return l2fc_df_list, ids
 
 
