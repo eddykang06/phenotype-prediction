@@ -2,7 +2,9 @@
 import pandas as pd
 import numpy as np
 import os
+import re
 from src.metadata import attach_tpm_metadata
+
 
 def read_fcnts_as_df(folder_path, entropy = False):
     """
@@ -42,6 +44,7 @@ def read_fcnts_as_df(folder_path, entropy = False):
 
     return fcnt_df_list
 
+
 def sample_name_strip(name):
     """
     Convert a sample file name into an easy to read sample name
@@ -61,8 +64,21 @@ def sample_name_strip(name):
 
     # Remove "T4-wt"
     new_name = new_name.replace("T4-wt", "")
+    new_name = new_name.replace("WT4-", "")
+    new_name = new_name.replace("T4-", "")
+
+    # Remove nucleotide tag
+    new_name = re.sub(r"-[ACGT]{6}$", "", new_name)
+
+    # Lower case replicate tags and time
+    new_name = new_name[:-1] + new_name[-1].lower()
+    new_name = new_name.replace("MIN", "min")
+
+    # Remove extra numbers at front
+    new_name = re.sub(r'^\d+', '', new_name)
 
     return new_name
+
 
 def fcnts_to_tpms(fcnt_df_list):
     """
@@ -102,6 +118,7 @@ def fcnts_to_tpms(fcnt_df_list):
 
     return tpm_df_list
 
+
 def bind_tpm_data(tpm_df_list):
     """
     Function to take a list of TPM dataframes, then bind all into 1 dataframe
@@ -132,6 +149,7 @@ def bind_tpm_data(tpm_df_list):
     all_tpms = pd.concat(tpm_df_list_uniq, axis = 1, join = "outer").T
 
     return all_tpms
+
 
 def read_cfus(folder_path):
     """
@@ -171,7 +189,7 @@ def read_cfus(folder_path):
 
     return all_cfus
 
-# Function to bind TPMs
+
 def bind_tpm_and_cfu_data(tpm_df, cfu_df):
     """
     Function bind TPM and cfu dfs
@@ -186,6 +204,7 @@ def bind_tpm_and_cfu_data(tpm_df, cfu_df):
     data_df = pd.merge(tpm_df, cfu_df, left_index = True, right_index = True, how = "right")
 
     return data_df
+
 
 def get_all_tpm_data(fcnts_path, cfu_path):
     """

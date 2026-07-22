@@ -1,6 +1,8 @@
 """All functions for metadata extraction from condition labels"""
 import numpy as np 
 import pandas as pd
+import re
+
 
 def condition_to_replicate_idx(condition_list):
     """
@@ -198,12 +200,28 @@ def condition_to_timepoint(condition_label):
         "0hr": 0,
         "1hr": 1,
         "2hr": 2,
-        "4hr": 4
+        "4hr": 4,
+        "10min": 10,
+        "20min": 20,
+        "30min": 30,
+        "45min": 45,
+        "60min": 60,
+        "90min": 90,
+        "120min": 120,
+        "150min": 150,
+        "180min": 180,
+        "210min": 210,
+        "240min": 240
     }
 
     # Find the timepoint label
     time_idx = condition_label.find("hr")
-    timepoint = condition_label[time_idx - 1:time_idx + 2]
+
+    if time_idx == -1:
+        timepoint = re.search(r'(\d+)min', condition_label).group(0)
+
+    else:
+        timepoint = condition_label[time_idx - 1:time_idx + 2]
 
     # Convert to int
     timepoint = time_map[timepoint]
