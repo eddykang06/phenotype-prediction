@@ -4,7 +4,7 @@ import numpy as np
 import os
 from src.metadata import attach_tpm_metadata
 
-def read_fcnts_as_df(folder_path):
+def read_fcnts_as_df(folder_path, entropy = False):
     """
     Extracts all feature count csvs from a specified folder and stores them as a list of dataframes
 
@@ -17,12 +17,20 @@ def read_fcnts_as_df(folder_path):
     
     # Filter out the summary files and keep Fcnts from no-drug control (NDC) comparisons
     all_files = os.listdir(folder_path)
-    files = [
-        f for f in all_files
-        if f.endswith(".csv")
-        and ".summary" not in f
-        and "NDC0hr" in f
+
+    if entropy:
+        files = [
+            f for f in all_files
+            if f.endswith(".csv")
+            and ".summary" not in f
             ]
+    else:
+        files = [
+            f for f in all_files
+            if f.endswith(".csv")
+            and ".summary" not in f
+            and "NDC0hr" in f
+                ]
 
     if len(files) == 0: 
         raise FileNotFoundError(f"No matching feature count files found in {folder_path}")
