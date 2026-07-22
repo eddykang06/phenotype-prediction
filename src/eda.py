@@ -116,34 +116,56 @@ def find_consistent_interaction_genes(
 
 def plot_l2fc_heatmap(
     df,
-    annotations,
-    drug_order,
-    annot_col,
-    gene_categories,
+    vmax,
+    annotations = None,
+    drug_order = None,
+    annot_col = None,
+    gene_categories = None,
     figsize = (16, 10),
     cmap = "coolwarm",
     show_xticklabels = False,
     show_yticklabels = False,
+    genes = None,
+    secondary_annot_col = None,
 ):
     """
     Plot heatmap of log2fc for specified samples and genes.
 
     Args:
         df              : Sample x gene dataframe containing l2fc data and metadata
-        annotations     : Gene x annotation dataframe containing per-gene annotations
+        annotations     : Gene x annotation dataframe containing per-gene annotations.
+                          Required when selecting genes with gene_categories
         drug_order      : List of drug groups to plot on x-axis, in order
-        annot_col       : Annotation column used to group genes on y-axis
-        gene_categories : List of gene annotation categories to plot, in order
+        annot_col       : Annotation column used to group genes on y-axis. Required
+                          when selecting genes with gene_categories
+        gene_categories : Optional list of gene annotation categories to plot, in order
         figsize         : Figure size
         cmap            : Heatmap color map
         show_xticklabels: Whether to show sample labels
         show_yticklabels: Whether to show gene labels
+        genes           : Optional list of specific genes to plot, in order. Supply
+                          either genes or gene_categories, but not both
+        secondary_annot_col: Optional annotation column to show as a secondary
+                          y-axis. Requires annotations
 
     Returns:
         ax : matplotlib axes object
     """
-    # Isolate gene columns
-    gene_cols = df.columns[df.columns.str.contains("^SP", regex = True, na = False)]
+    if drug_order is None:
+        raise ValueError("drug_order must be provided")
+
+    if (genes is None) == (gene_categories is None):
+        raise ValueError("Provide exactly one of genes or gene_categories")
+
+    if secondary_annot_col is not None:
+        if annotations is None:
+            raise ValueError(
+                "annotations is required when using secondary_annot_col"
+            )
+        if secondary_annot_col not in annotations.columns:
+            raise KeyError(
+                f"{secondary_annot_col} not found in annotations columns"
+            )
 
     # Filter and order samples by drug category
     plot_df = df[df["drug_id"].isin(drug_order)].copy()
@@ -160,28 +182,56 @@ def plot_l2fc_heatmap(
         "drug2_dose"
     ])
 
-    # Keep only genes that are present in both df and annotations
-    shared_genes = annotations.index.intersection(gene_cols)
+    if genes is not None:
+        if isinstance(genes, str):
+            raise TypeError("genes must be a list-like collection, not a string")
 
-    # Get gene annotations and filter to selected categories
-    gene_annot = annotations.loc[shared_genes, [annot_col]].copy()
-    gene_annot = gene_annot[gene_annot[annot_col].isin(gene_categories)]
+        # dict.fromkeys removes duplicates while retaining the requested order.
+        ordered_genes = list(dict.fromkeys(genes))
+        if not ordered_genes:
+            raise ValueError("genes must contain at least one gene")
 
-    # Order genes by selected annotation categories
-    gene_annot[annot_col] = pd.Categorical(
-        gene_annot[annot_col],
-        categories = gene_categories,
-        ordered = True
-    )
+        missing_genes = [gene for gene in ordered_genes if gene not in df.columns]
+        if missing_genes:
+            raise ValueError(
+                "Genes not found in df columns: " + ", ".join(map(str, missing_genes))
+            )
+    else:
+        if annotations is None or annot_col is None:
+            raise ValueError(
+                "annotations and annot_col are required when using gene_categories"
+            )
+        if annot_col not in annotations.columns:
+            raise KeyError(f"{annot_col} not found in annotations columns")
 
-    gene_annot = gene_annot.sort_values(annot_col)
-    ordered_genes = gene_annot.index.tolist()
+        # Isolate gene columns and keep those represented in the annotations.
+        gene_cols = df.columns[
+            df.columns.str.contains("^SP", regex = True, na = False)
+        ]
+        shared_genes = annotations.index.intersection(gene_cols)
+
+        # Get gene annotations and filter to selected categories.
+        gene_annot = annotations.loc[shared_genes, [annot_col]].copy()
+        gene_annot = gene_annot[gene_annot[annot_col].isin(gene_categories)]
+
+        # Order genes by selected annotation categories.
+        gene_annot[annot_col] = pd.Categorical(
+            gene_annot[annot_col],
+            categories = gene_categories,
+            ordered = True
+        )
+
+        gene_annot = gene_annot.sort_values(annot_col)
+        ordered_genes = gene_annot.index.tolist()
+
+        if not ordered_genes:
+            raise ValueError("No genes found for the requested gene_categories")
 
     # Gene x sample matrix
     mat = plot_df[ordered_genes].T.astype(float)
 
     # Generate symmetric color gradient around 0
-    vmax = np.nanpercentile(np.abs(mat.to_numpy()), 98)
+    vmax = vmax
 
     fig, ax = plt.subplots(figsize = figsize)
 
@@ -193,7 +243,8 @@ def plot_l2fc_heatmap(
         vmin = -vmax,
         vmax = vmax,
         xticklabels = show_xticklabels,
-        yticklabels = show_yticklabels
+        yticklabels = show_yticklabels,
+        cbar_kws={"label": "Log2FC"}
     )
 
     # -------------------------
@@ -220,34 +271,52 @@ def plot_l2fc_heatmap(
             clip_on = False
         )
 
-    # -------------------------
-    # Y-axis annotation groups
-    # -------------------------
-    y_groups = gene_annot.loc[mat.index, annot_col]
-    y_group_sizes = y_groups.value_counts(sort = False).reindex(gene_categories)
+    if genes is None:
+        # -------------------------
+        # Y-axis annotation groups
+        # -------------------------
+        y_groups = gene_annot.loc[mat.index, annot_col]
+        y_group_sizes = y_groups.value_counts(sort = False).reindex(gene_categories)
 
-    y_boundaries = y_group_sizes.cumsum()[:-1]
-    for boundary in y_boundaries:
-        ax.axhline(boundary, color = "black", linewidth = 2)
+        y_boundaries = y_group_sizes.cumsum()[:-1]
+        for boundary in y_boundaries:
+            ax.axhline(boundary, color = "black", linewidth = 2)
 
-    y_starts = np.r_[0, y_group_sizes.cumsum().values[:-1]]
-    y_centers = y_starts + y_group_sizes.values / 2
+        y_starts = np.r_[0, y_group_sizes.cumsum().values[:-1]]
+        y_centers = y_starts + y_group_sizes.values / 2
 
-    for center, label in zip(y_centers, gene_categories):
-        ax.text(
-            -7,
-            center,
-            label,
-            ha = "center",
-            va = "center",
-            fontsize = 11,
-            fontweight = "bold",
-            rotation = 90,
-            clip_on = False
+        for center, label in zip(y_centers, gene_categories):
+            ax.text(
+                -7,
+                center,
+                label,
+                ha = "center",
+                va = "center",
+                fontsize = 11,
+                fontweight = "bold",
+                rotation = 90,
+                clip_on = False
+            )
+
+    if secondary_annot_col is not None:
+        # Align per-gene annotations to the plotted matrix, including when genes
+        # were reordered by annotation category.
+        secondary_labels = (
+            annotations.reindex(mat.index)[secondary_annot_col]
+            .fillna("")
+            .astype(str)
         )
+        secondary_ax = ax.secondary_yaxis("left")
+        secondary_ax.set_yticks(np.arange(len(mat.index)) + 0.5)
+        secondary_ax.set_yticklabels(secondary_labels)
+        secondary_ax.spines["left"].set_position(("outward", 130))
+        secondary_ax.set_ylabel(secondary_annot_col)
 
     ax.set_xlabel("Samples grouped by drug condition")
-    ax.set_ylabel(f"Genes grouped by {annot_col}")
+    if genes is None:
+        ax.set_ylabel(f"Genes grouped by {annot_col}")
+    else:
+        ax.set_ylabel("Genes")
 
     plt.tight_layout()
     plt.show()
