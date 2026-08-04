@@ -201,6 +201,7 @@ def condition_to_timepoint(condition_label):
         "1hr": 1,
         "2hr": 2,
         "4hr": 4,
+        "0min": 0,
         "10min": 10,
         "20min": 20,
         "30min": 30,

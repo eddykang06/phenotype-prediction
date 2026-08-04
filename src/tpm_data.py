@@ -45,11 +45,12 @@ def read_fcnts_as_df(folder_path, entropy = False):
     return fcnt_df_list
 
 
-def sample_name_strip(name):
+def sample_name_strip(name, strip_leading_digits = False):
     """
     Convert a sample file name into an easy to read sample name
     Args:
         name : (ex: "/ExpOut/260107_AV242502_RNASeq_miniHT_SpnT4WT_CEF_CIP/Out/Rep/Bams/T4-wt12CEF12CIP1hr-a.bam")
+        strip_leading_digits : Remove an entropy-dataset numeric prefix when True
         
     Returns:
         new_name : (ex: 12CEF12CIP1hr-a)
@@ -58,34 +59,35 @@ def sample_name_strip(name):
     samplename_start_idx = name.strip().rfind("/") + 1
     new_name = name[samplename_start_idx:]
 
-    # Find index of . (.bam is at end of sample name) and remove filetag
-    filetag_start_idx = new_name.rfind(".")
-    new_name = new_name[:filetag_start_idx]
+    # Remove the BAM extension when this is a raw featureCounts column name.
+    # Leaving an already-clean name unchanged makes this function safe to reuse.
+    new_name = re.sub(r"\.bam$", "", new_name, flags = re.IGNORECASE)
 
     # Remove "T4-wt"
     new_name = new_name.replace("T4-wt", "")
     new_name = new_name.replace("WT4-", "")
     new_name = new_name.replace("T4-", "")
 
-    # Remove nucleotide tag
-    new_name = re.sub(r"-[ACGT]{6}$", "", new_name)
+    # Remove the variable-length nucleotide tag used by the entropy dataset.
+    new_name = re.sub(r"-[ACGT]+$", "", new_name)
 
     # Lower case replicate tags and time
     new_name = new_name[:-1] + new_name[-1].lower()
     new_name = new_name.replace("MIN", "min")
 
-    # Remove extra numbers at front
-    new_name = re.sub(r'^\d+', '', new_name)
+    if strip_leading_digits:
+        new_name = re.sub(r"^\d+", "", new_name)
 
     return new_name
 
 
-def fcnts_to_tpms(fcnt_df_list):
+def fcnts_to_tpms(fcnt_df_list, strip_leading_digits = False):
     """
     Converts a list of RNA-seq feature count dataframes to a list of TPM dataframes
 
     Args:
         fcnt_df_list : List of feature count dataframes
+        strip_leading_digits : Apply entropy-specific numeric-prefix cleanup to sample names
 
     Returns:
         tpm_df_list : List of TPM dataframes
@@ -113,7 +115,12 @@ def fcnts_to_tpms(fcnt_df_list):
         df[fcnts_cols] = df[fcnts_cols].apply(lambda column: column * 10**6 / sum(column))
 
         df.drop(columns = "Length", inplace = True)
-        df = df.rename(columns = lambda column: sample_name_strip(column))
+        df = df.rename(
+            columns = lambda column: sample_name_strip(
+                column,
+                strip_leading_digits = strip_leading_digits
+            )
+        )
         tpm_df_list.append(df)        
 
     return tpm_df_list
