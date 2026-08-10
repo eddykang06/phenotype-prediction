@@ -9,16 +9,20 @@ from src.metadata import (
     condition_to_drug_id, condition_to_timepoint
 )
 from sklearn.metrics import r2_score
+from sklearn.base import BaseEstimator
 
 
-def plot_growth_curves(df):
+def plot_growth_curves(
+    df: pd.DataFrame
+):
     """
+    Plot growth curves for each drug in the entropy dataset
+
     Args:
-        df : OD600 with sample names on index
+        df : OD600 values with sample names on index
 
     Returns:
         Growth curve plot for each drug in the dataset
-
     """
     index = df.index
     meta = pd.DataFrame(
@@ -56,18 +60,18 @@ def plot_growth_curves(df):
 
 
 def plot_1x_predictions(
-    model,
-    train_df
+    model: BaseEstimator,
+    train_df: pd.DataFrame
 ):
     """
     1x MIC training predictions
 
     Args:  
-        model    : 
-        train_df : 
+        model    : Trained model loaded from saved checkedpoint
+        train_df : Dataframe containing all data from current RNA-seq experiments
     
     Returns:
-        Plot of true vs
+        Plot of true vs. predicted log10CFU for all 1x MIC samples in training data
 
     """
     train_mask = (train_df["num_drugs"] == 1) | ((train_df["drug1_dose"]) == (train_df["drug2_dose"]))
@@ -97,9 +101,9 @@ def plot_1x_predictions(
 
 
 def plot_predictions(
-    model,
-    data_df,
-    use_entropy = False
+    model: BaseEstimator,
+    data_df: pd.DataFrame,
+    use_entropy: bool = False
 ):
     """
     Plotting model predictions on entropy dataset
@@ -141,4 +145,3 @@ def plot_predictions(
     )
     corr = stats.spearmanr(res[x_label], res["Predicted log10 CFU"])
     plt.title(f"Model predictions for entropy paper dataset (Spearman r = {corr.statistic:.3f})")
-    

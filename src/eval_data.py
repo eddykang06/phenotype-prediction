@@ -15,9 +15,11 @@ from src.metadata import (
 )
 
 
-def get_od_and_cfu(od_path):
+def get_od_and_cfu(
+    od_path: Path | str
+) -> pd.DataFrame:
     """
-    Get OD600 for all samples, then also get CFUs by converting
+    Get OD600 for all samples, then also get CFUs by converting with 10^8 conversion factor
 
     Args:
         od_path: Path to OD600 values for all samples
@@ -54,9 +56,11 @@ def get_od_and_cfu(od_path):
     return df
 
 
-def get_entropy(entropy_path):
+def get_entropy(
+    entropy_path: Path | str
+) -> pd.DataFrame:
     """
-    Get entropy for each sample
+    Get entropy values for each sample
 
     Args:
         entropy_path : Path to entropy files
@@ -97,9 +101,17 @@ def get_entropy(entropy_path):
     return df
 
 
-def get_growth_curves(root):
+def get_growth_curves(
+    root: Path | str
+) -> pd.DataFrame:
     """
     Load OD600 growth curve data from data config file
+    
+    Args:
+        root: Path to root directory of repo
+
+    Returns:
+        gc: DataFrame containing OD600 for all samples up to 240 min
     """
     # Get data from configs
     config_path = Path(root / "configs" / "data_loader.yaml")
@@ -116,7 +128,9 @@ def get_growth_curves(root):
     return gc
 
     
-def get_entropy_data(root):
+def get_entropy_data(
+    root: Path | str
+) -> pd.DataFrame:
     """
     Load TPM, entropy, and OD600 values from entropy dataset using data config file
 

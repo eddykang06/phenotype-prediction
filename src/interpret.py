@@ -14,7 +14,7 @@ from sklearn.model_selection import GridSearchCV
 def cv_feature_importances(
     df: pd.DataFrame,
     splits: list[tuple[list, list]]
-):
+) -> pd.DataFrame:
     """
     Run nested CV and calculate feature stability across folds (mean/std coefficient across folds)
 
