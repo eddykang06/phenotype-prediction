@@ -235,7 +235,7 @@ def get_all_tpm_data(fcnts_path, cfu_path):
     return all_data
 
 
-def get_new_data(root):
+def get_current_data(root):
     """
     Run entire data extraction pipeline on recent RNA-seq data using stored data root config file
 

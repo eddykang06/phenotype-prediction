@@ -3,6 +3,27 @@ import numpy as np
 import matplotlib.pyplot as plt
 import gseapy as gp
 import seaborn as sns
+import yaml
+from pathlib import Path
+
+
+def get_annotations(root):
+    """
+    Load annotation tsv
+    """
+    # Open config file
+    config_path = Path(root / "configs" / "data_loader.yaml")
+
+    with open(config_path, "r") as f:
+        cfg = yaml.safe_load(f)
+
+    data_dir = Path(cfg["data_dir"])
+    annot_path = str(data_dir / "Annotation_TIGR4.tsv")
+
+    annotations = pd.read_table(annot_path, sep = "\t")
+    annotations.set_index("TIGR4.old", inplace = True, drop = True)
+
+    return annotations
 
 
 def find_consistent_interaction_genes(
