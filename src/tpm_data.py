@@ -1,8 +1,9 @@
 """All data extraction functions for models using TPM data to predict CFU"""
 import pandas as pd
 import numpy as np
-import os
-import re
+import os, re
+import yaml
+from pathlib import Path
 from src.metadata import attach_tpm_metadata
 
 
@@ -230,5 +231,38 @@ def get_all_tpm_data(fcnts_path, cfu_path):
     cfu_df       = read_cfus(cfu_path)
     all_data     = bind_tpm_and_cfu_data(tpm_df, cfu_df)
     all_data     = attach_tpm_metadata(all_data)
-    
+
     return all_data
+
+
+def get_new_data(root):
+    """
+    Run entire data extraction pipeline on recent RNA-seq data using stored data root config file
+
+    Args:
+        root : Path to root directory of repo
+    
+    Returns:
+        out : Annotated dataframe of all samples with TPM and log10 CFU values
+    """
+    # Open config file
+    config_path = Path(root / "configs" / "data_loader.yaml")
+
+    with open(config_path, "r") as f:
+        cfg = yaml.safe_load(f)
+
+    data_dir = Path(cfg["data_dir"])
+    fcnts_path = str(data_dir / "fcnts_timezero")
+    cfu_path = str(data_dir / "cfus")
+
+    # Load data using TPM pipeline
+    out = get_all_tpm_data(
+        fcnts_path = fcnts_path,
+        cfu_path = cfu_path
+    )
+
+    # Remove sample with 0 CFU
+    out = out[out["CFU"] != 0]
+    out["CFU"] = np.log10(out["CFU"])
+
+    return out

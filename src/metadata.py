@@ -4,32 +4,6 @@ import pandas as pd
 import re
 
 
-def condition_to_replicate_idx(condition_list):
-    """
-    Function to convert a list of conditions into replicate labels
-
-    Args:
-        condition_list : List of condition labels, ex: ["12CIP1hr-a", "12CIP1hr-b",...]
-
-    Returns:
-        idx_list : List of condition labels converted into replicate indices, ex: [0, 0, 1,...]
-    """
-    idx_list = [0]
-
-    for i in range(1, len(condition_list)):
-        prev_condition = condition_list[i-1]   
-        curr_condition = condition_list[i]
-
-        # Exclude last character since "-a" "-b"
-        if prev_condition[:-1] == curr_condition[:-1]:
-            idx_list.append(idx_list[i-1])
-        
-        else:
-            idx_list.append(idx_list[i-1] + 1)
-    
-    return idx_list
-    
-
 def find_first_alpha(str):
     """
     Function to find the index of the the first letter in a string

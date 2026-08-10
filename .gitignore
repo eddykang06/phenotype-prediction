@@ -4,4 +4,6 @@ __pycache__/
 model1.ipynb
 model2.ipynb
 rough_pipeline.ipynb
-/.vscode
+/.vscode/
+
+.vscode/
