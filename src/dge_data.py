@@ -2,7 +2,9 @@
 import pandas as pd
 import numpy as np
 import os
+import yaml
 from src.metadata import attach_synergy_metadata
+from pathlib import Path
 
 def clean_csv_name(name):
     """
@@ -359,3 +361,84 @@ def get_all_synergy_data(
     )
 
     return df
+
+
+def get_synergy(
+    root: Path | str
+):
+    """
+    
+    Load all synergy data from data directory config
+    """
+    config_path = Path(root / "configs" / "data_loader.yaml")
+
+    with open(config_path, "r") as f:
+        cfg = yaml.safe_load(f)
+
+    data_dir = Path(cfg["data_dir"])
+    l2fc_dir = str(data_dir / "dge")
+    cfu_dir = str(data_dir / "cfus")
+
+    # Use synergy loading pipeline
+    df = get_all_synergy_data(
+        l2fc_dir = l2fc_dir,
+        cfu_dir = cfu_dir,
+        interaction_score_method = simple_interaction_score,
+        synergy_score_method = eob_score,
+        time_matched = True
+    )
+
+    # Drop genes with NA values
+    df = df.dropna(axis = 1)
+
+    return df
+
+def get_l2fc(
+    root: Path | StopIteration
+):
+    """
+    Load all log2fc data from data directory config
+    """
+    config_path = Path(root / "configs" / "data_loader.yaml")
+
+    with open(config_path, "r") as f:
+        cfg = yaml.safe_load(f)
+
+    data_dir = Path(cfg["data_dir"])
+    l2fc_dir = str(data_dir / "dge")
+    cfu_dir = str(data_dir / "cfus")
+    df = attach_synergy_metadata(get_l2fc_and_cfu_data(l2fc_dir, cfu_dir, time_matched = True))
+
+    return df
+
+
+def get_pval(
+    root: Path | str
+):
+    """
+    Load all adjusted pvalues from data directory config
+    """
+    # Open config file
+    config_path = Path(root / "configs" / "data_loader.yaml")
+
+    with open(config_path, "r") as f:
+        cfg = yaml.safe_load(f)
+
+    data_dir = Path(cfg["data_dir"])
+    l2fc_dir = str(data_dir / "dge")
+
+    # Get list of pvalues
+    _, pval_df_list, ids = read_l2fc_as_df(
+        data_dir = l2fc_dir,
+        time_matched = True,
+        pval = True
+    )
+    # Bind and filter to relevant samples
+    df = bind_l2fc_data(
+        l2fc_df_list = pval_df_list,
+        ids = ids
+    )
+    df = df.iloc[~df.index.str.contains("NDC")]
+
+    return df
+

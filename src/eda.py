@@ -26,6 +26,88 @@ def get_annotations(root):
     return annotations
 
 
+def get_deg_count(
+    l2fc_df,
+    pval_df,
+    pval_cutoff,
+    l2fc_cutoff
+):
+    """
+    Get # of DEGs for each condition, using specified log2fc and pvalue cutoffs
+
+    Args:
+
+    Returns:
+        out : df with "num_degs" column for each sample
+    
+    """
+    # Identify gene columns
+    gene_cols = l2fc_df.columns[
+        l2fc_df.columns.str.contains("SP")
+    ]
+
+    # Separate metadata and gene-level values
+    meta = l2fc_df.drop(columns = gene_cols)
+    l2fc = l2fc_df.loc[:, gene_cols]
+
+    # Align p-values with both the rows and columns of l2fc
+    pval = pval_df.reindex(
+        index = l2fc.index,
+        columns = gene_cols
+    )
+
+    # A gene is a DEG when it passes both thresholds
+    deg_mask = (
+        l2fc.abs().gt(l2fc_cutoff)
+        & pval.lt(pval_cutoff)
+    )
+
+    # Count DEGs per sample
+    out = meta.copy()
+    out.insert(0, "num_deg", deg_mask.sum(axis = 1))
+
+    return out
+
+
+def plot_degs_over_time(
+    l2fc_df,
+    pval_df,
+    pval_cutoff,
+    l2fc_cutoff,
+    drug_id
+):
+    """
+    Plot the # of DEGs over time for a specified drug, colored by time
+
+    Args:
+        l2fc_df:
+        pval_df:
+        pval_cutoff:
+        l2fc_cutoff:
+        drug_id : Drug ID of interest (ex: "CEF", "CEF+RIF", "VNC")
+    """
+    df = get_deg_count(
+        l2fc_df = l2fc_df,
+        pval_df = pval_df,
+        pval_cutoff = pval_cutoff,
+        l2fc_cutoff = l2fc_cutoff
+    )
+
+    # Filter to drug of interest
+    filtered = df[df["drug_id"] == drug_id]
+    
+    sns.lineplot(
+        data = filtered,
+        x = "timepoint",
+        y = "num_deg",
+        hue = "drug1_dose"
+    )
+    plt.xlabel("Time (h)")
+    plt.ylabel("Number of DEGs")
+    plt.title(f"Number of DEGs over time for {drug_id}")
+
+
+
 def find_consistent_interaction_genes(
     df,
     combo,
