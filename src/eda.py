@@ -7,9 +7,17 @@ import yaml
 from pathlib import Path
 
 
-def get_annotations(root):
+def get_annotations(
+    root: Path | str
+):
     """
-    Load annotation tsv
+    Load TIGR4 annotation file from data directory config
+
+    Args:
+        root : Root directory of repo
+    
+    Returns:
+        annotations: Annotation file in dataframe format
     """
     # Open config file
     config_path = Path(root / "configs" / "data_loader.yaml")
@@ -27,19 +35,22 @@ def get_annotations(root):
 
 
 def get_deg_count(
-    l2fc_df,
-    pval_df,
-    pval_cutoff,
-    l2fc_cutoff
+    l2fc_df: pd.DataFrame,
+    pval_df: pd.DataFrame,
+    pval_cutoff: float,
+    l2fc_cutoff: int | float
 ):
     """
-    Get # of DEGs for each condition, using specified log2fc and pvalue cutoffs
+    Generate a dataframe that shows # of DEGs for each condition, using specified log2fc and pvalue cutoffs
 
     Args:
+        l2fc_df     : Dataframe of log2FC values with samples on index
+        pval_df     : DataFrame of adjusted p-values with samples on index
+        pval_cutoff : Cutoff for DEG significance
+        l2fc_cutoff : Cutoff for DEG significance
 
     Returns:
         out : df with "num_degs" column for each sample
-    
     """
     # Identify gene columns
     gene_cols = l2fc_df.columns[
@@ -55,14 +66,10 @@ def get_deg_count(
         index = l2fc.index,
         columns = gene_cols
     )
-
-    # A gene is a DEG when it passes both thresholds
     deg_mask = (
         l2fc.abs().gt(l2fc_cutoff)
         & pval.lt(pval_cutoff)
     )
-
-    # Count DEGs per sample
     out = meta.copy()
     out.insert(0, "num_deg", deg_mask.sum(axis = 1))
 
@@ -70,21 +77,21 @@ def get_deg_count(
 
 
 def plot_degs_over_time(
-    l2fc_df,
-    pval_df,
-    pval_cutoff,
-    l2fc_cutoff,
-    drug_id
+    l2fc_df: pd.DataFrame,
+    pval_df: pd.DataFrame,
+    pval_cutoff: float,
+    l2fc_cutoff: float | int,
+    drug_id: str
 ):
     """
     Plot the # of DEGs over time for a specified drug, colored by time
 
     Args:
-        l2fc_df:
-        pval_df:
-        pval_cutoff:
-        l2fc_cutoff:
-        drug_id : Drug ID of interest (ex: "CEF", "CEF+RIF", "VNC")
+        l2fc_df     : Dataframe of log2FC values with samples on index
+        pval_df     : DataFrame of adjusted p-values with samples on index
+        pval_cutoff : Cutoff for DEG significance
+        l2fc_cutoff : Cutoff for DEG significance
+        drug_id     : Drug ID of interest (ex: "CEF", "CEF+RIF", "VNC")
     """
     df = get_deg_count(
         l2fc_df = l2fc_df,
@@ -107,17 +114,112 @@ def plot_degs_over_time(
     plt.title(f"Number of DEGs over time for {drug_id}")
 
 
+def plot_consistent_degs(
+    l2fc_df: pd.DataFrame,
+    pval_df: pd.DataFrame,
+    annotations : pd.DataFrame,
+    drug_id: str,
+    pval_cutoff: float,
+    l2fc_cutoff: float | int,
+    min_fraction: float,
+    figsize: tuple[int, int]
+):
+    """
+    Plot DEGs for a drug that are consistenly DEG in the same direction across all samples from that drug
+
+    Args:
+        l2fc_df      : Dataframe of log2FC values for all samples and genes, with samples on index
+        pval_df      : Dataframe of adjusted p-values for all samples and genes, with samples on index
+        annotations  : Datafrmae of annotations with genes on index
+        drug_id      : ID name of drug (ex: "CEF", "CIP+VNC")
+        pval_cutoff  : Cutoff for DEG significance
+        l2fc_cutoff  : Cutoff for DEG significance
+        min_fraction : (ex: 0.5 means that a DEG must be present in >= 50% of samples for it to be a consistent DEG)
+        figsize      : Tuple of plot dimensions
+    """
+    single_df = l2fc_df[l2fc_df["drug_id"] == drug_id]
+    single_df = single_df.sort_values(["timepoint", "drug1_dose"])
+
+    # Filter to 
+    gene_cols = l2fc_df.columns[l2fc_df.columns.str.contains("^SP", regex = True, na = False)]
+    samples = l2fc_df.index[l2fc_df["drug_id"] == drug_id]
+    filtered_l2fc = l2fc_df.loc[samples][gene_cols]
+    filtered_pval = pval_df.loc[samples]
+
+    # Filter to significant hits
+    sig_pval = filtered_pval < pval_cutoff
+
+    up_deg = (filtered_l2fc > l2fc_cutoff) & sig_pval
+    down_deg = (filtered_l2fc < -l2fc_cutoff) & sig_pval
+
+    up_fraction = up_deg.mean(axis = 0)
+    down_fraction = down_deg.mean(axis = 0)
+
+    # Construct dataframe of consistent degs
+    consistent_deg = pd.DataFrame({
+        "drug": drug_id,
+        "n_samples": filtered_l2fc.notna().sum(axis = 0),
+        "up_count": up_deg.sum(axis = 0),
+        "up_fraction": up_fraction,
+        "down_count": down_deg.sum(axis = 0),
+        "down_fraction": down_fraction,
+        "mean_l2fc": filtered_l2fc.mean(axis = 0),
+        "median_l2fc": filtered_l2fc.median(axis = 0),
+    })
+
+    consistent_deg["direction"] = np.select(
+        [
+            consistent_deg["up_fraction"] >= min_fraction,
+            consistent_deg["down_fraction"] >= min_fraction,
+        ],
+        [
+            "up",
+            "down",
+        ],
+        default = "none",
+    )
+
+    consistent_deg = consistent_deg[consistent_deg["direction"] != "none"]
+    consistent_deg["max_fraction"] = consistent_deg[["up_fraction", "down_fraction"]].max(axis = 1)
+
+    consistent_deg = consistent_deg.sort_values(
+        ["direction", "max_fraction", "mean_l2fc"],
+        ascending = [False, False, False]
+    )
+
+    # Heatmap 
+    fig, ax = plt.subplots(figsize = figsize)
+    sns.heatmap(
+        data = single_df[consistent_deg.index].T, 
+        cmap = "coolwarm", 
+        vmax = 5,
+        vmin = -5,
+        ax = ax,
+        cbar_kws = {"label": "Log2FC"}
+    )
+
+    # Add annotations as extra axis
+    annots = annotations.reindex(consistent_deg.index)
+    secax = ax.secondary_yaxis("left")
+    secax.set_yticks(np.arange(len(annots)) + 0.5)
+    secax.set_yticklabels(annots["Product"])
+    secax.spines["left"].set_position(("outward", 100))
+    secax.set_ylabel("Product")
+
+    ax.set_title(f"Top consistently high/low DEGs for {drug_id}")
+
+
 
 def find_consistent_interaction_genes(
-    df,
-    combo,
-    left_cutoff,
-    right_cutoff,
-    min_fraction = 0.5,
-    combo_col = "drug_id",
-    gene_cols = None,
-    gene_pattern = "^SP",
-    include_equal = True,
+    df: pd.DataFrame,
+    combo: str,
+    left_cutoff: float,
+    right_cutoff: float,
+    min_fraction: float = 0.5,
+    combo_col: str = "drug_id",
+    gene_cols: list[str] = None,
+    gene_pattern: str = "^SP",
+    include_equal: bool = True,
 ):
     """
     Find genes with interaction scores consistently outside left/right cutoffs
@@ -138,12 +240,6 @@ def find_consistent_interaction_genes(
         hits : Gene-indexed dataframe of genes above right_cutoff or below
                left_cutoff in at least min_fraction of selected samples
     """
-    if combo_col not in df.columns:
-        raise KeyError(f"{combo_col} not found in df columns")
-
-    if not 0 < min_fraction <= 1:
-        raise ValueError("min_fraction must be greater than 0 and less than or equal to 1")
-
     if left_cutoff >= right_cutoff:
         raise ValueError("left_cutoff must be less than right_cutoff")
 
@@ -218,8 +314,8 @@ def find_consistent_interaction_genes(
 
 
 def plot_l2fc_heatmap(
-    df,
-    vmax,
+    df: pd.DataFrame,
+    vmax: float | int,
     annotations = None,
     drug_order = None,
     annot_col = None,
@@ -232,27 +328,21 @@ def plot_l2fc_heatmap(
     secondary_annot_col = None,
 ):
     """
-    Plot heatmap of log2fc for specified samples and genes.
+    Plot heatmap of log2fc for specified samples and genes
 
     Args:
-        df              : Sample x gene dataframe containing l2fc data and metadata
-        annotations     : Gene x annotation dataframe containing per-gene annotations.
-                          Required when selecting genes with gene_categories
-        drug_order      : List of drug groups to plot on x-axis, in order
-        annot_col       : Annotation column used to group genes on y-axis. Required
-                          when selecting genes with gene_categories
-        gene_categories : Optional list of gene annotation categories to plot, in order
-        figsize         : Figure size
-        cmap            : Heatmap color map
-        show_xticklabels: Whether to show sample labels
-        show_yticklabels: Whether to show gene labels
-        genes           : Optional list of specific genes to plot, in order. Supply
-                          either genes or gene_categories, but not both
-        secondary_annot_col: Optional annotation column to show as a secondary
-                          y-axis. Requires annotations
-
-    Returns:
-        ax : matplotlib axes object
+        df                  : Log2FC data and metadata for all samples and genes, with sample on index 
+        vmax                : Outer bound of log2FC to bound heatmap color gradient
+        annotations         : Dataframe with gene annotations, genes on index 
+        drug_order          : List of drug groups to plot on x-axis, in order
+        annot_col           : Annotation column used to group genes on y-axis.
+        gene_categories     : Optional list of gene annotation categories to plot, in order
+        figsize             : Figure size
+        cmap                : Heatmap color map
+        show_xticklabels    : Whether to show sample labels
+        show_yticklabels    : Whether to show gene labels
+        genes               : Optional list of specific genes to plot, in order. Supply either genes or gene_categories, but not both
+        secondary_annot_col : Optional annotation column to show as a secondary y-axis. Requires annotations
     """
     if drug_order is None:
         raise ValueError("drug_order must be provided")
@@ -423,5 +513,3 @@ def plot_l2fc_heatmap(
 
     plt.tight_layout()
     plt.show()
-
-    return ax
