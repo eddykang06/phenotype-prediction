@@ -351,10 +351,10 @@ def train_custom_synergy_model(
 
 
 def plot_r2_over_data_increase(
-        df,
-        step_size,
-        n_splits,
-        seed = None
+    df: pd.DataFrame,
+    step_size: int,
+    n_splits: int,
+    seed: int | None = None
 ):
     """
     Plot R^2 performance over time as more combination data is incrementaly added to the training set.

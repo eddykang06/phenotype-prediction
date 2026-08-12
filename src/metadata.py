@@ -4,7 +4,9 @@ import pandas as pd
 import re
 
 
-def find_first_alpha(str):
+def find_first_alpha(
+    str: str
+):
     """
     Function to find the index of the the first letter in a string
     (will be used for drug name parser function)
@@ -21,7 +23,9 @@ def find_first_alpha(str):
             break 
 
 
-def condition_to_drug_id(condition_label):
+def condition_to_drug_id(
+    condition_label: str
+):
     """
     Function to convert a condition label to a drug ID
 
@@ -63,7 +67,9 @@ def condition_to_drug_id(condition_label):
         raise KeyError("Condition label does not fit drug ID criteria")
 
 
-def condition_to_drugs(condition_label):
+def condition_to_drugs(
+    condition_label: str
+):
     """
     Function to convert a condition label to a list of the two drugs represented
 
@@ -104,7 +110,9 @@ def condition_to_drugs(condition_label):
         raise KeyError("Condition label does not fit drug ID criteria")
     
 
-def condition_to_dose(condition_label):
+def condition_to_dose(
+    condition_label: str
+):
     """
     Function to convert a condition label to a list of the two drugs represented
 
@@ -160,7 +168,9 @@ def condition_to_dose(condition_label):
         raise KeyError("Condition label does not fit drug ID criteria")
 
 
-def condition_to_timepoint(condition_label):
+def condition_to_timepoint(
+    condition_label: str
+):
     """
     Function to convert a condition label to a timepoint
 
@@ -204,7 +214,10 @@ def condition_to_timepoint(condition_label):
     return timepoint
 
 
-def condition_to_ndc_cfu(condition_label, ndc_cfus):
+def condition_to_ndc_cfu(
+    condition_label: str, 
+    ndc_cfus: np.array
+):
     """
     Function to convert a condition label to the corresponding timepoint CFU
     
@@ -230,7 +243,9 @@ def condition_to_ndc_cfu(condition_label, ndc_cfus):
     return ndc_cfu
 
 
-def attach_tpm_metadata(df):
+def attach_tpm_metadata(
+    df: pd.DataFrame
+):
     """
     Function to attach corresponding metadata to data df
 
@@ -272,7 +287,9 @@ def attach_tpm_metadata(df):
     return df
 
 
-def attach_synergy_metadata(df):
+def attach_synergy_metadata(
+    df: pd.DataFrame
+):
     """
     Function to extract NDC CFU data and attach corresponding metadata to data df
 

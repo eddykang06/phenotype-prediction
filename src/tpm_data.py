@@ -7,7 +7,10 @@ from pathlib import Path
 from src.metadata import attach_tpm_metadata
 
 
-def read_fcnts_as_df(folder_path, entropy = False):
+def read_fcnts_as_df(
+    folder_path: Path | str, 
+    entropy: bool = False
+):
     """
     Extracts all feature count csvs from a specified folder and stores them as a list of dataframes
 
@@ -46,7 +49,10 @@ def read_fcnts_as_df(folder_path, entropy = False):
     return fcnt_df_list
 
 
-def sample_name_strip(name, strip_leading_digits = False):
+def sample_name_strip(
+    name: str, 
+    strip_leading_digits: bool = False
+):
     """
     Convert a sample file name into an easy to read sample name
     Args:
@@ -82,7 +88,10 @@ def sample_name_strip(name, strip_leading_digits = False):
     return new_name
 
 
-def fcnts_to_tpms(fcnt_df_list, strip_leading_digits = False):
+def fcnts_to_tpms(
+    fcnt_df_list: list[pd.DataFrame], 
+    strip_leading_digits: bool = False
+):
     """
     Converts a list of RNA-seq feature count dataframes to a list of TPM dataframes
 
@@ -127,7 +136,9 @@ def fcnts_to_tpms(fcnt_df_list, strip_leading_digits = False):
     return tpm_df_list
 
 
-def bind_tpm_data(tpm_df_list):
+def bind_tpm_data(
+    tpm_df_list: list[pd.DataFrame]
+):
     """
     Function to take a list of TPM dataframes, then bind all into 1 dataframe
     Args: 
@@ -159,7 +170,9 @@ def bind_tpm_data(tpm_df_list):
     return all_tpms
 
 
-def read_cfus(folder_path):
+def read_cfus(
+    folder_path: Path | str 
+):
     """
     Function to extract CFUs into a dataframe with conditions on rows, 1 CFU column
     Args:
@@ -198,7 +211,10 @@ def read_cfus(folder_path):
     return all_cfus
 
 
-def bind_tpm_and_cfu_data(tpm_df, cfu_df):
+def bind_tpm_and_cfu_data(
+    tpm_df: pd.DataFrame, 
+    cfu_df: pd.DataFrame
+):
     """
     Function bind TPM and cfu dfs
     Args:
@@ -214,7 +230,10 @@ def bind_tpm_and_cfu_data(tpm_df, cfu_df):
     return data_df
 
 
-def get_all_tpm_data(fcnts_path, cfu_path):
+def get_all_tpm_data(
+    fcnts_path: Path | str, 
+    cfu_path: Path | str
+):
     """
     Function to run entire data extraction pipeline
 
@@ -235,7 +254,9 @@ def get_all_tpm_data(fcnts_path, cfu_path):
     return all_data
 
 
-def get_current_data(root):
+def get_current_data(
+    root: Path
+):
     """
     Run entire data extraction pipeline on recent RNA-seq data using stored data root config file
 

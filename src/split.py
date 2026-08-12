@@ -1,10 +1,13 @@
 """Functions to implement specific train-test splits"""
-
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import StratifiedKFold
 
-def combination_stratified_split(df, num_folds, seed = None):
+
+def combination_stratified_split(
+    df: pd.DataFrame, 
+    num_folds: int, 
+    seed: int | None = None):
     """
     Train-test split where train-test split is stratified by combination, so the 
     drug distribution is equal between train-test
@@ -31,7 +34,9 @@ def combination_stratified_split(df, num_folds, seed = None):
     return splits
 
 
-def combination_held_out_split(df):
+def combination_held_out_split(
+    df: pd.DataFrame
+):
     """
     Train-test split where 1 drug combination is held out in each split
 
@@ -60,7 +65,9 @@ def combination_held_out_split(df):
     return splits
 
 
-def timepoint_held_out_split(df):
+def timepoint_held_out_split(
+    df: pd.DataFrame
+):
     """
     Train-test split where 1 timepoint is held out in each split
 
@@ -90,10 +97,10 @@ def timepoint_held_out_split(df):
 
 
 def random_combination_splits(
-        data_df,
-        n_combo_datapoints,
-        n_splits,
-        seed = None
+        data_df: pd.DataFrame,
+        n_combo_datapoints: int,
+        n_splits: int,
+        seed: int | None = None
 ): 
     """
     Generate a specified number of train-test splits with a specified number of combination datapoints in the training set
