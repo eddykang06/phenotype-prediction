@@ -1,3 +1,52 @@
 # Bacterial phenotype prediction using bulk RNA-seq data
 [In progress]. 
 ## Getting started 
+
+## Repository Structure
+
+```text
+phenotype-prediction/
+├── configs/
+│   └── data_loader.yaml            # Data path/configuration
+│
+├── models/
+│   └── diagonal_cfu_model.pkl      # Saved CFU prediction model
+│
+├── notebooks/
+│   ├── 01-eda.ipynb                     # Exploratory data analysis
+│   ├── 02-cfu-prediction.ipynb          # CFU prediction
+│   ├── 03-cfu-interpretation.ipynb      # CFU model interpretation
+│   ├── 04-cfu-evaluation.ipynb          # CFU model evaluation
+│   ├── 05-synergy-prediction.ipynb      # Synergy prediction
+│   └── 06-synergy-interpretation.ipynb  # Synergy model interpretation
+│
+├── src/
+│   ├── dge_data.py                 # Differential gene-expression data utilities
+│   ├── eda.py                      # Exploratory analysis utilities
+│   ├── eval.py                     # Model evaluation
+│   ├── eval_data.py                # Evaluation data utilities
+│   ├── interpret.py                # Feature/model interpretation
+│   ├── metadata.py                 # Sample metadata utilities
+│   ├── predict.py                  # Prediction utilities
+│   ├── split.py                    # Train/test splitting utilities
+│   ├── tpm_data.py                 # TPM expression data utilities
+│   └── train.py                    # Regression model training
+```
+
+## Data
+
+## Requirements and setup
+**1. Clone the repository**
+```bash 
+git clone https://github.com/eddykang06/phenotype-prediction.git
+cd phenotype-prediction
+``` 
+**2. Create and activate the environment**
+```bash 
+conda create -n phenotype-prediction python -y
+conda activate phenotype-prediction
+```
+**3. Install dependencies**
+```bash
+pip install -r requirements.txt
+```
