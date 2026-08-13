@@ -7,10 +7,10 @@
 ```text
 phenotype-prediction/
 ├── configs/
-│   └── data_loader.yaml            # Data path/configuration
+│   └── data_loader.yaml                 # Data path config
 │
 ├── models/
-│   └── diagonal_cfu_model.pkl      # Saved CFU prediction model
+│   └── diagonal_cfu_model.pkl           # Saved CFU prediction model
 │
 ├── notebooks/
 │   ├── 01-eda.ipynb                     # Exploratory data analysis
@@ -21,16 +21,15 @@ phenotype-prediction/
 │   └── 06-synergy-interpretation.ipynb  # Synergy model interpretation
 │
 ├── src/
-│   ├── dge_data.py                 # Differential gene-expression data utilities
-│   ├── eda.py                      # Exploratory analysis utilities
-│   ├── eval.py                     # Model evaluation
-│   ├── eval_data.py                # Evaluation data utilities
-│   ├── interpret.py                # Feature/model interpretation
-│   ├── metadata.py                 # Sample metadata utilities
-│   ├── predict.py                  # Prediction utilities
-│   ├── split.py                    # Train/test splitting utilities
-│   ├── tpm_data.py                 # TPM expression data utilities
-│   └── train.py                    # Regression model training
+│   ├── dge_data.py                      # Loading DGE data
+│   ├── eda.py                           # Exploratory data analysis on log2FC
+│   ├── eval.py                          # Model evaluation
+│   ├── eval_data.py                     # Loading external dataset for evaluation
+│   ├── interpret.py                     # Feature/model interpretation
+│   ├── metadata.py                      # Sample metadata
+│   ├── split.py                         # Train/test splits
+│   ├── tpm_data.py                      # Loading TPM data from feature counts
+│   └── train.py                         # Training scripts
 ```
 
 ## Data
