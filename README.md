@@ -1,8 +1,11 @@
 # Bacterial phenotype prediction using bulk RNA-seq data
 ## Overview
+This repo contains the code for predicting *Streptococcus pneumoniae* phenotype in response to antibiotic combinations using bulk RNA-seq data. 
 
 ## Model description
+The first model type maps gene expression to CFU (colony-forming units).
 
+The second model type maps gene expression to drug synergy scores.
 
 ## Repository Structure
 
@@ -35,6 +38,7 @@ phenotype-prediction/
 ```
 
 ## Data
+The data used in this repo has not been publicly released yet. However, the dataset consists of bulk RNA-seq data collected across
 
 ## Requirements and setup
 **1. Clone the repository**
