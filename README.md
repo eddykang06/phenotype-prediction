@@ -1,11 +1,16 @@
 # Bacterial phenotype prediction using bulk RNA-seq data
 ## Overview
-This repo contains the code for predicting *Streptococcus pneumoniae* phenotype in response to antibiotic combinations using bulk RNA-seq data. 
+This repo contains the code for a project completed in the van Opijnen lab at Boston Children's Hospital. The primary goal was to model *Streptococcus pneumoniae* phenotype in response to multiple antibiotic combinations using bulk RNA-seq data. 
 
-## Model description
-The first model type maps gene expression to CFU (colony-forming units).
+We predicted two different readouts of bacterial phenotype:
+- **Bacterial viability**: measured as CFU (colony-forming units)
+- **Drug synergy**: measured using EOB (excess over Bliss) score, which tells us how much more effective an antibiotic combination compared to the sum of its monotherapies.
 
-The second model type maps gene expression to drug synergy scores.
+## Analysis pipeline
+1. **Data processing** - ntegrate gene expression, phenotype, and treatment metadata
+2. **Prediction** - train PLS regression models with cross-validation
+3. **Evaluation** - test generalization across antibiotic treatment conditions
+4. **Interpretation** - Analyzing model coefficients and using GSEA to find genes and pathways associated with phenotypic outcomes
 
 ## Repository Structure
 
@@ -37,10 +42,8 @@ phenotype-prediction/
 │   └── train.py                         # Training scripts
 ```
 
-## Data
-The data used in this repo has not been publicly released yet. However, the dataset consists of bulk RNA-seq data collected across
-
 ## Requirements and setup
+
 **1. Clone the repository**
 ```bash 
 git clone https://github.com/eddykang06/phenotype-prediction.git
@@ -55,3 +58,6 @@ conda activate phenotype-prediction
 ```bash
 pip install -r requirements.txt
 ```
+Update `configs/data_loader.yaml` to point to the local data directory, then run the notebooks in order.
+
+> **Note:** Source data has not been publicly released at this time.
