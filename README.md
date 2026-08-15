@@ -2,7 +2,7 @@
 ## Overview
 This repo contains the code for a project completed in the van Opijnen lab at Boston Children's Hospital. The primary goal was to model *Streptococcus pneumoniae* phenotype in response to multiple antibiotic combinations using bulk RNA-seq data. 
 
-We used two different readouts of bacterial phenotype as prediction targets:
+We used two different readouts of phenotype as prediction targets:
 - **Bacterial survival**: measured as CFU (colony-forming units)
 - **Drug synergy**: measured using EOB (excess over Bliss) score, which quantifies how much more effective an antibiotic combination compared to the sum of its monotherapies.
 
