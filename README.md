@@ -58,7 +58,6 @@ conda activate phenotype-prediction
 ```bash
 pip install -r requirements.txt
 ```
-**4. Run from data root**
-
+**4. Run from data root**    
 Update `configs/data_loader.yaml` to point to the local data directory, then run the notebooks in order.
 > **Note:** Source data has not been publicly released at this time.
